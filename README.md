@@ -12,7 +12,6 @@ The manuscript is currently under review. This repository currently provides a *
 The current release includes:
 
 - a lightweight reference implementation of the task-level action interface;
-- a minimal runnable example and unit tests;
-- supporting project configuration and documentation.
+- a minimal runnable example and unit tests.
 
 The complete robot-control, data-collection, training, reward-model, and experimental-evaluation code will be made available after publication of the paper.

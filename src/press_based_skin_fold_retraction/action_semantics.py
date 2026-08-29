@@ -1,64 +1,50 @@
-"""Reference semantics for the phase-aware 7D task action.
+"""Minimal reference for the paper's contact-aware action semantics.
 
-The first six components retain delta-pose semantics. The seventh component is
-a normal-force increment used only during hybrid contact control. This module
-contains no robot I/O; it makes the phase projection explicit and testable.
+The unified action is ``[delta_position, delta_orientation,
+desired_normal_force]``. Autonomous execution has two contact states:
+
+* non-contact: execute position and orientation increments;
+* contact: execute only the tangential position increment and desired normal
+  force while discarding normal position and orientation increments.
+
+This module contains no robot I/O or low-level safety controller.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
-from math import isfinite
+from enum import IntEnum
+from math import isfinite, sqrt
 from typing import Iterable
 
 
 ACTION_DIMENSION = 7
 ACTION_LABELS = (
-    "delta_x",
-    "delta_y",
-    "delta_z",
-    "delta_rotation_x",
-    "delta_rotation_y",
-    "delta_rotation_z",
-    "delta_normal_force",
+    "delta_position_x",
+    "delta_position_y",
+    "delta_position_z",
+    "delta_orientation_x",
+    "delta_orientation_y",
+    "delta_orientation_z",
+    "desired_normal_force",
 )
 
 
-class ControlPhase(str, Enum):
-    """Contact-aware execution phases."""
+class ContactState(IntEnum):
+    """Force-estimated autonomous contact state."""
 
-    FREE_SPACE = "FREE_SPACE"
-    PRECONTACT_Z_ONLY = "PRECONTACT_Z_ONLY"
-    CONTACT_HYBRID = "CONTACT_HYBRID"
-
-
-_ACTIVE_INDICES = {
-    ControlPhase.FREE_SPACE: (0, 1, 2, 3, 4, 5),
-    ControlPhase.PRECONTACT_Z_ONLY: (2,),
-    ControlPhase.CONTACT_HYBRID: (0, 1, 6),
-}
+    NON_CONTACT = 0
+    CONTACT = 1
 
 
 @dataclass(frozen=True)
-class PhaseCommand:
-    """A decoded command after phase projection and physical scaling."""
+class InterpretedAction:
+    """Task action after contact-aware semantic interpretation."""
 
-    phase: ControlPhase
-    position_delta: tuple[float, float, float]
-    rotation_delta: tuple[float, float, float]
-    normal_force_delta: float
-    active_dimensions: tuple[str, ...]
-
-
-def _coerce_phase(phase: ControlPhase | str) -> ControlPhase:
-    if isinstance(phase, ControlPhase):
-        return phase
-    try:
-        return ControlPhase(str(phase).upper())
-    except ValueError as exc:
-        valid = ", ".join(item.value for item in ControlPhase)
-        raise ValueError(f"Unknown control phase {phase!r}; expected one of: {valid}") from exc
+    contact_state: ContactState
+    position_increment: tuple[float, float, float]
+    orientation_increment: tuple[float, float, float]
+    desired_normal_force: float | None
 
 
 def _coerce_action(action: Iterable[float]) -> tuple[float, ...]:
@@ -72,65 +58,65 @@ def _coerce_action(action: Iterable[float]) -> tuple[float, ...]:
     return values
 
 
-def project_action(
+def _coerce_contact_state(state: ContactState | int | bool) -> ContactState:
+    if isinstance(state, ContactState):
+        return state
+    try:
+        return ContactState(int(state))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Contact state must be 0 (non-contact) or 1 (contact)") from exc
+
+
+def _unit_vector(vector: Iterable[float]) -> tuple[float, float, float]:
+    values = tuple(float(value) for value in vector)
+    if len(values) != 3:
+        raise ValueError(f"Expected a 3D tool normal, received {len(values)} values")
+    if not all(isfinite(value) for value in values):
+        raise ValueError("Tool-normal values must be finite")
+
+    norm = sqrt(sum(value * value for value in values))
+    if norm <= 1e-12:
+        raise ValueError("Tool normal must have non-zero magnitude")
+    return tuple(value / norm for value in values)
+
+
+def interpret_action(
     action: Iterable[float],
-    phase: ControlPhase | str,
+    contact_state: ContactState | int | bool,
     *,
-    clip: bool = True,
-) -> tuple[float, ...]:
-    """Project a normalized action onto the dimensions active in ``phase``.
+    tool_normal: Iterable[float] | None = None,
+) -> InterpretedAction:
+    """Interpret the unified action according to the force-estimated state.
 
-    Args:
-        action: Seven values ordered according to :data:`ACTION_LABELS`.
-        phase: A :class:`ControlPhase` value or its case-insensitive name.
-        clip: Clip active normalized values to ``[-1, 1]`` when true.
-
-    Returns:
-        A seven-element tuple with inactive dimensions set to zero.
+    ``tool_normal`` is required in contact and is expressed in the same frame
+    as the position increment. The returned contact position increment is the
+    tangential projection ``(I - n n^T) delta_position``.
     """
 
     values = _coerce_action(action)
-    resolved_phase = _coerce_phase(phase)
-    projected = [0.0] * ACTION_DIMENSION
+    state = _coerce_contact_state(contact_state)
+    position = values[:3]
+    orientation = values[3:6]
 
-    for index in _ACTIVE_INDICES[resolved_phase]:
-        value = values[index]
-        projected[index] = max(-1.0, min(1.0, value)) if clip else value
+    if state is ContactState.NON_CONTACT:
+        return InterpretedAction(
+            contact_state=state,
+            position_increment=position,
+            orientation_increment=orientation,
+            desired_normal_force=None,
+        )
 
-    return tuple(projected)
+    if tool_normal is None:
+        raise ValueError("tool_normal is required in contact")
+    normal = _unit_vector(tool_normal)
+    normal_component = sum(normal[index] * position[index] for index in range(3))
+    tangential_position = tuple(
+        position[index] - normal[index] * normal_component for index in range(3)
+    )
 
-
-def decode_action(
-    action: Iterable[float],
-    phase: ControlPhase | str,
-    *,
-    position_scale: float,
-    rotation_scale: float,
-    normal_force_scale: float,
-    clip: bool = True,
-) -> PhaseCommand:
-    """Project and scale a normalized task action into a structured command.
-
-    Scales are expressed per control step: meters for ``position_scale``,
-    radians for ``rotation_scale``, and newtons for ``normal_force_scale``.
-    """
-
-    scales = (position_scale, rotation_scale, normal_force_scale)
-    if not all(isfinite(float(value)) and float(value) >= 0.0 for value in scales):
-        raise ValueError("Action scales must be finite and non-negative")
-
-    resolved_phase = _coerce_phase(phase)
-    projected = project_action(action, resolved_phase, clip=clip)
-    active_indices = _ACTIVE_INDICES[resolved_phase]
-
-    return PhaseCommand(
-        phase=resolved_phase,
-        position_delta=tuple(
-            projected[index] * float(position_scale) for index in range(3)
-        ),
-        rotation_delta=tuple(
-            projected[index] * float(rotation_scale) for index in range(3, 6)
-        ),
-        normal_force_delta=projected[6] * float(normal_force_scale),
-        active_dimensions=tuple(ACTION_LABELS[index] for index in active_indices),
+    return InterpretedAction(
+        contact_state=state,
+        position_increment=tangential_position,
+        orientation_increment=(0.0, 0.0, 0.0),
+        desired_normal_force=values[6],
     )
