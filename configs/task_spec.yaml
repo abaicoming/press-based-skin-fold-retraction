@@ -1,0 +1,66 @@
+schema_version: 1
+
+project:
+  title: Learning Press-Based Robotic Skin-Fold Retraction with Passive Compliance and Contact-Aware Action Semantics
+  task: press_based_skin_fold_retraction
+
+platform:
+  robot_family: KUKA LBR Med
+  operator_interface: sigma.7 haptic master
+  end_effector: passive-compliance pressing tool
+
+observations:
+  images:
+    - wrist_rgb
+    - side_rgb
+  proprioception:
+    - tcp_pose
+    - tcp_velocity
+    - tcp_force
+    - tcp_torque
+  reward_modalities:
+    - multi_view_rgb
+    - wrist_wrench_history
+
+action:
+  dimension: 7
+  normalized_range: [-1.0, 1.0]
+  layout:
+    - delta_x
+    - delta_y
+    - delta_z
+    - delta_rotation_x
+    - delta_rotation_y
+    - delta_rotation_z
+    - delta_normal_force
+
+control_phases:
+  FREE_SPACE:
+    active_dimensions: [0, 1, 2, 3, 4, 5]
+    mode: cartesian_pose
+  PRECONTACT_Z_ONLY:
+    active_dimensions: [2]
+    mode: constrained_normal_approach
+  CONTACT_HYBRID:
+    active_dimensions: [0, 1, 6]
+    mode: tangential_position_normal_force
+
+learning:
+  workflow: human_in_the_loop_reinforcement_learning
+  replay_sources:
+    - demonstrations
+    - online_experience
+    - human_interventions
+  success_estimator:
+    visual_inputs: [wrist_rgb, side_rgb]
+    force_inputs: [tcp_force_history, tcp_torque_history]
+
+evaluation:
+  metrics:
+    - task_success_rate
+    - time_to_success
+    - peak_normal_force
+    - peak_tangential_force
+    - intervention_count
+    - contact_duration
+    - safety_violation_count
