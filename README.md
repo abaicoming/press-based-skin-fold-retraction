@@ -21,16 +21,6 @@ The current release includes:
 
 The full research code and experimental materials—including the KUKA/ROS 2 control stack, sigma.7 shared-control and haptic interface, complete HIL-SERL training pipeline, multimodal reward-classifier training code, robot experiment scripts, and release-ready configurations—will be made available after publication of the paper.
 
-## Method at a glance
-
-| Component | Role |
-| --- | --- |
-| Passive-compliance end effector | Conforms to the local surface while distributing contact during pressing and retraction. |
-| Contact-aware action semantics | Interprets the same 7D policy action according to free-space, pre-contact, and contact phases. |
-| Shared-control teleoperation | Uses a haptic master interface for demonstrations and online human intervention. |
-| Multimodal reward estimation | Combines multi-view RGB observations with wrist force/torque history for success recognition. |
-| Human-in-the-loop RL | Mixes demonstrations, online experience, and intervention transitions in an actor–learner workflow. |
-
 ## Contact-aware action interface
 
 The normalized action is
