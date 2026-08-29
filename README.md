@@ -7,6 +7,20 @@ This repository accompanies **“Learning Press-Based Robotic Skin-Fold Retracti
 
 The project studies robotic retraction of skin-like deformable surfaces without relying on a pinch grasp. A passively compliant pressing tool, contact-aware hybrid position–force control, multimodal success estimation, and human-in-the-loop reinforcement learning are combined to create and maintain an exposed working region.
 
+## Code release status
+
+The manuscript is currently under review. This repository provides a **partial research release** containing the task-level interfaces and documentation needed to describe the contact-aware action design.
+
+The current release includes:
+
+- a self-contained implementation of the phase-aware 7D action semantics;
+- a runnable action-decoding example and unit tests;
+- a machine-readable task specification covering observations, actions, control phases, learning inputs, and evaluation metrics;
+- method, system-architecture, and robot-safety documentation;
+- continuous-integration checks for the released Python interface.
+
+The full research code and experimental materials—including the KUKA/ROS 2 control stack, sigma.7 shared-control and haptic interface, complete HIL-SERL training pipeline, multimodal reward-classifier training code, robot experiment scripts, and release-ready configurations—will be made available after publication of the paper.
+
 ## Method at a glance
 
 | Component | Role |
