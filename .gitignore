@@ -25,3 +25,7 @@ camera_snapshots/
 wandb/
 *.pkl
 *.mp4
+
+# Keep the project-page video in GitHub Pages.
+!docs/videos/
+!docs/videos/*.mp4

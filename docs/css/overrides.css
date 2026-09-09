@@ -1,0 +1,24 @@
+/* Local, system-font-only refinements and CSS-only chart placeholders. */
+:root {
+  --serif: Georgia, serif;
+  --sans: Arial, Helvetica, sans-serif;
+  --mono: "Courier New", monospace;
+}
+
+/* Keep the lazily inserted teaser video anchored to its own media frame. */
+.teaser-frame { position: relative; }
+
+.force-line-preview {
+  position: absolute;
+  inset: 18px 0 auto;
+  height: 84px;
+  background: linear-gradient(153deg, transparent 0 11%, var(--coral) 11.4% 13%, transparent 13.4% 31%, var(--coral) 31.4% 33%, transparent 33.4% 57%, var(--coral) 57.4% 59%, transparent 59.4% 100%);
+  filter: drop-shadow(39px -19px 0 var(--coral)) drop-shadow(82px 2px 0 var(--coral)) drop-shadow(128px 10px 0 var(--coral));
+  transform: skewY(-4deg);
+}
+
+.analysis-plot { position: absolute; inset: 30px 0 auto; height: 168px; overflow: hidden; }
+.plot-grid { position: absolute; inset: 0; background: repeating-linear-gradient(to bottom, transparent 0 40px, #ffffff20 41px); }
+.plot-line { position: absolute; left: 0; width: 100%; transform-origin: left center; }
+.normal-line { top: 63%; height: 4px; background: linear-gradient(125deg, transparent 0 12%, #effd8a 12.3% 13%, transparent 13.3% 29%, #effd8a 29.3% 30%, transparent 30.3% 100%); filter: drop-shadow(79px -47px 0 #effd8a) drop-shadow(156px 3px 0 #effd8a) drop-shadow(250px 9px 0 #effd8a) drop-shadow(371px -8px 0 #effd8a); }
+.tangent-line { top: 90%; height: 2px; background: repeating-linear-gradient(90deg, #65c9ff 0 7px, transparent 7px 12px); filter: drop-shadow(210px -19px 0 #65c9ff) drop-shadow(305px -61px 0 #65c9ff) drop-shadow(420px 0 0 #65c9ff) drop-shadow(530px 9px 0 #65c9ff); }
